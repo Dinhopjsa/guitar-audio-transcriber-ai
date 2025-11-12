@@ -1,0 +1,32 @@
+# Audio & datasets
+data/
+Datasets/
+datasets/
+*.wav
+*.mp3
+*.flac
+*.zip
+
+# ML artifacts
+*.npy
+*.npz
+*.pt
+*.pth
+*.h5
+*.csv
+checkpoints/
+models/
+
+# Python noise
+__pycache__/
+.venv/
+venv/
+.env
+
+# IDE noise
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
