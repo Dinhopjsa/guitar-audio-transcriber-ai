@@ -18,7 +18,8 @@ Expect:
 - Non-final evaluation methods
 - Paths, configs, and scripts that may depend on a specific local setup
 
-**This is a research codebase, not a packaged tool.**
+**This is a research codebase, not a packaged tool.**  
+**This project does *not* include any of the datasets used in model training.**  
 
 ---
 
