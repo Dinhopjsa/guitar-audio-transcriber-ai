@@ -1,62 +1,76 @@
 import os
+from pathlib import Path
 from dataclasses import dataclass
 
 @dataclass
 class Config:
-    PROJECT_ROOT        = os.path.join("..")
-    DATASETS_ROOT       = os.path.join("..", "data", "online", "datasets", "kaggle")
-    CHECKPOINTS_ROOT    = os.path.join(DATASETS_ROOT, "checkpoints")
+    PROJECT_ROOT: str        = str(Path(__file__).resolve().parent.parent)
+    DATASETS_ROOT: str       = os.path.join(PROJECT_ROOT, "data", "online", "datasets", "kaggle")
+    CHECKPOINTS_ROOT: str    = os.path.join(DATASETS_ROOT, "checkpoints")
 
-# Optional: AudioConfig, MFCCConfig base classes
 
 @dataclass
 class MLPConfig(Config):
-    CHECKPOINTS_ROOT = os.path.join(Config.CHECKPOINTS_ROOT, "mlp")
 
-    TARGET_SR               = 11025
+    CHECKPOINTS_ROOT: str = os.path.join(Config.CHECKPOINTS_ROOT, "mlp")
 
-    SAVE_CHECKPOINT         = True
-    LOAD_CHECKPOINT         = False
+    TARGET_SR: int                  = 11025
 
-    N_MFCC                  = 20
-    BATCH_SIZE              = 32
-    NORMALIZE_FEATURES      = False     # note: don't use together with std scaler
-    STANDARD_SCALER         = True
-    NORMALIZE_AUDIO_VOLUME  = True
+    SAVE_CHECKPOINT: bool           = True
+    LOAD_CHECKPOINT: bool           = False
 
-    HIDDEN_DIM              = 128
-    NUM_HIDDEN_LAYERS       = 2
-    DROPOUT                 = 0.1
+    N_MFCC: int                     = 20
+    BATCH_SIZE: int                 = 32
+    NORMALIZE_FEATURES: bool        = False     # note: don't use together with std scaler
+    STANDARD_SCALER: bool           = True
+    NORMALIZE_AUDIO_VOLUME: bool    = True
 
-    LR                      = 1e-3
-    DECAY                   = 1e-4
+    HIDDEN_DIM: int                 = 128
+    NUM_HIDDEN_LAYERS: int          = 2
+    DROPOUT: float                  = 0.1
 
-    EPOCHS                  = 50
-    ES_WINDOW_LEN           = 5
-    ES_SLOPE_LIMIT          = -0.0001
+    LR: float                       = 1e-3
+    DECAY: float                    = 1e-4
+
+    EPOCHS: int                     = 50
+    MAX_CLIP_NORM: float            = 1.0
+    ES_WINDOW_LEN: int              = 5
+    ES_SLOPE_LIMIT: float           = -0.0001
 
 
 
 @dataclass
 class CNNConfig(Config):
-    CHECKPOINTS_ROOT = os.path.join(Config.CHECKPOINTS_ROOT, "cnn")
 
-    TARGET_SR               = 11025
+    CHECKPOINTS_ROOT: str = os.path.join(Config.CHECKPOINTS_ROOT, "cnn")
 
-    SAVE_CHECKPOINT         = True
-    LOAD_CHECKPOINT         = False
+    TARGET_SR: int                  = 11025
 
-    N_MELS                  = 128
-    BATCH_SIZE              = 32
-    NORMALIZE_FEATURES      = False     # note: don't use together with std scaler
-    STANDARD_SCALER         = True
-    NORMALIZE_AUDIO_VOLUME  = True
+    SAVE_CHECKPOINT: bool           = True
+    LOAD_CHECKPOINT: bool           = False
 
-    DROPOUT                 = 0.1
+    N_MELS: int                     = 128
+    N_FFT: int                      = 512
+    HOP_LENGTH: int                 = 256
+    BATCH_SIZE: int                 = 32
+    NORMALIZE_AUDIO_VOLUME: bool    = True
 
-    LR                      = 1e-3
-    DECAY                   = 1e-4
 
-    EPOCHS                  = 50
-    ES_WINDOW_LEN           = 5
-    ES_SLOPE_LIMIT          = -0.0001
+    BASE_CHANNELS: int              = 32
+    NUM_BLOCKS: int                 = 3
+    HIDDEN_DIM: int                 = 256
+    DROPOUT: float                  = 0.1
+    KERNEL_SIZE: int                = 3
+
+    LR: float                       = 1e-3
+    DECAY: float                    = 1e-4
+
+    EPOCHS: int                     = 50
+    MAX_CLIP_NORM: float            = 1.0
+    ES_WINDOW_LEN: int              = 5
+    ES_SLOPE_LIMIT: float           = -0.0001
+    USE_AMP: bool                   = True
+
+
+    #NORMALIZE_FEATURES      = False
+    #STANDARD_SCALER         = True

@@ -1,6 +1,8 @@
 import os, time, json
 from datetime import datetime
 from pathlib import Path
+from pprint import pprint
+from dataclasses import asdict
 
 import math
 import numpy as np
@@ -153,10 +155,22 @@ class CNN(nn.Module):
     ):
         super().__init__()
 
+        self.init_args = {
+            "num_classes": num_classes,
+            "in_channels": in_channels,
+            "base_channels": base_channels,
+            "num_blocks": num_blocks,
+            "hidden_dim": hidden_dim,
+            "dropout": dropout,
+            "kernel_size": kernel_size,
+            "use_maxpool": use_maxpool,
+            "adaptive_pool": adaptive_pool,
+        }
+
         conv_layers = []
         channels = [in_channels]
 
-        # Build channel progression: e.g. 1 → 32 → 64 → 128 for 3 blocks
+        # Build channel progression: 1 → 32 → 64 → 128 for 3 blocks
         for b in range(num_blocks):
             in_ch = channels[-1]
             out_ch = base_channels * (2 ** b)
@@ -167,7 +181,7 @@ class CNN(nn.Module):
                     in_ch,
                     out_ch,
                     kernel_size=kernel_size,
-                    padding=kernel_size // 2,  # "same-ish" padding
+                    padding=kernel_size // 2,
                 )
             )
             if use_batchnorm:
@@ -177,7 +191,7 @@ class CNN(nn.Module):
             if use_maxpool:
                 conv_layers.append(nn.MaxPool2d(2))  # halve H,W
 
-        # Optional adaptive pooling to a fixed spatial size (independent of input H,W)
+        # Optional: adaptive pooling to a fixed spatial size (independent of input H,W)
         conv_layers.append(nn.AdaptiveAvgPool2d(adaptive_pool))
 
         self.features = nn.Sequential(*conv_layers)
@@ -205,14 +219,15 @@ class CNN(nn.Module):
 
         self.classifier = nn.Sequential(*classifier_layers)
 
-        # For pretty printing & consistency with your old version
-        self.model = nn.Sequential(self.features, self.classifier)
+        self.net = nn.Sequential(self.features, self.classifier)
 
-        print("CNN model created: \n", self.model, end="\n\n")
+        #print("CNN model created: \n", self.net, end="\n\n")
 
     def forward(self, x):
-        x = self.model(x)
+        x = self.net(x)
         return x
+
+
 
 class CNNTrainer():
     def __init__(
@@ -240,6 +255,7 @@ class CNNTrainer():
         self.val_dl             = val_dl
         self.reverse_map        = reverse_map
         self.class_names        = [str(reverse_map[k]) for k in sorted(reverse_map)] if reverse_map else []
+        #self.num_classes = len(self.class_names)
 
         self.train_loss_history     = []
         self.train_accuracy_history = []
@@ -247,18 +263,15 @@ class CNNTrainer():
         self.val_loss_history       = []
         self.epoch                  = 0
 
-    def _check_dims(self, dl, model=None):
-        # checks if input x feature dimensions of a dataloader fit a models in_features
-        model = self.model if not model and self.model else None
-
-        if len(dl) == 0:
-            raise ValueError("[_check_dims] Provided DataLoader is empty.")
+    def _check_dims(self, dl):
+        if dl is None or len(dl) == 0:
+            raise ValueError("[_check_dims] dl is empty.")
 
         xb, _ = next(iter(dl))
-        xb_num_features = xb.shape[1:]
-        if xb_num_features != model.net[0].in_features:
-            raise ValueError(
-                f"[_check_dims] Input feature dimension mismatch: DataLoader provides {xb_num_features}, but model expects {self.model.net[0].in_features}")
+
+        if not xb.ndim == 4:
+            raise ValueError(f"[_check_dims] Unexpected tensor rank: xb.ndim = {xb.ndim}. ")
+
 
     def _init_weights_kaiming(self, m):
         if isinstance(m, nn.Linear):
@@ -388,7 +401,7 @@ class CNNTrainer():
         self._check_dims(train_dl)
 
         use_amp = use_amp and (self.device.type == "cuda")
-        scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+        scaler = torch.amp.GradScaler(self.device.type ,enabled=use_amp)
 
         # optional: (re)initialize histories
         self.train_loss_history = []
@@ -399,6 +412,7 @@ class CNNTrainer():
         print("[train] CNN training start.")
 
         for ep in range(1, epochs + 1):
+            print(f"[train] EPOCH {ep} / {epochs}")
 
             epoch_loss_sum, correct, total = 0.0, 0, 0
 
@@ -409,7 +423,7 @@ class CNNTrainer():
                 self.optimizer.zero_grad(set_to_none=True)
 
                 # ---- forward (with optional AMP) ----
-                with torch.cuda.amp.autocast(enabled=use_amp):
+                with torch.amp.autocast(self.device.type, enabled=use_amp):
                     logits = self.model(xb)
                     loss = self.loss_fn(logits, yb)
 
@@ -467,10 +481,11 @@ class CNNTrainer():
             self.val_accuracy_history.append(val_acc)
             self.val_loss_history.append(val_loss)
 
-            print(f"[train] EPOCH {ep} / {epochs}")
             print(
                   f"[train] train loss: {epoch_loss:.4f} | "
-                  f"train accuracy: {epoch_acc:.4f}"
+                  f"train accuracy: {epoch_acc:.4f} | "
+                  f"val loss: {val_loss:.4f} | "
+                  f"val accuracy: {val_acc:.4f}"
             )
             print("\n...\n")
 
@@ -503,7 +518,7 @@ class CNNTrainer():
                 yb = yb.to(self.device, non_blocking=True)
 
                 # Forward pass (with optional AMP)
-                with torch.cuda.amp.autocast(enabled=use_amp):
+                with torch.amp.autocast(self.device.type, enabled=use_amp):
                     logits = self.model(xb)  # raw, unscaled model output values
                     loss = self.loss_fn(logits, yb)
 
@@ -531,106 +546,173 @@ class CNNTrainer():
             if report:
                 self._classification_report(y_true, preds_np, target_names=self.class_names)
 
-        print("Eval time: ", format_time(time.time() - eval_start_time))
-        # print(f"[evaluate] val accuracy: {acc:.4f}, val loss: {avg_loss:.4f}")
+        #print("Eval time: ", format_time(time.time() - eval_start_time))
+        #print(f"[evaluate] val accuracy: {acc:.4f}, val loss: {avg_loss:.4f}")
         return acc, avg_loss
     
-    def save(self, path, epoch=None, other=None):
-        
-        Path(path).parent.mkdir(parents=True, exist_ok=True)		# create dir on disk if not already
-        
+    def save(self, filename = "cnn_ckpt.ckpt", root = "checkpoints/cnn/"):
+        os.makedirs(root, exist_ok=True)
+        save_path = os.path.join(root, filename)
+
         ckpt = {
-            "ts": datetime.now().isoformat(timespec="seconds"),
-            "epoch": int(epoch if epoch is not None else -1),
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "loss_fn_type": type(self.loss_fn).__name__,
-            "accs": getattr(self, "accs", []),
-            "losses": getattr(self, "losses", []),
-            "device_used": str(getattr(self, "device", "cpu")),
-            "other": other or {},
+            "device": str(self.device),
+            "train_loss_history": getattr(self, "train_loss_history", []),
+            "train_accuracy_history": getattr(self, "train_accuracy_history", []),
+            "val_loss_history": getattr(self, "val_loss_history", []),
+            "val_accuracy_history": getattr(self, "val_accuracy_history", []),
+            "epoch": getattr(self, "epoch", 0),
+            "model_meta": {
+                "class_names": self.model.__class__.__name__,
+                "init_args": self.model.init_args,
+            },
         }
-        
-        # optional:
+
+        # optional AMP scaler state
         if hasattr(self, "amp_scaler") and self.amp_scaler is not None:
             try:
                 ckpt["amp_scaler"] = self.amp_scaler.state_dict()
             except Exception:
                 pass
-                            
-        
-        torch.save(ckpt, path)
-        print(f"[save] Saved checkpoint: {path}.")
-        
-    def load(self, path, load_optimizer=True, load_amp_scaler=True):
-        
-        map_location = self.device if hasattr(self, "device") else "cpu"	# prevent crashes if loaded onto different torch device
-        ckpt = torch.load(path, map_location=map_location)
-        
-        self.model.load_state_dict(ckpt["model"], strict=True)
-        
-        if load_optimizer and "optimizer" in ckpt and hasattr(self, "opt"):
-            self.optimizer.load_state_dict(ckpt["optimizer"])
-            
-        # optional:
-        if load_amp_scaler and "amp_scaler" in ckpt and hasattr(self, "amp_scaler"):
-            self.amp_scaler.load_state_dict(ckpt["amp_scaler"])
-            
-        self.accs 		= ckpt.get("accs", [])
-        self.losses 	= ckpt.get("losses", [])
-        
-        self.epoch 	= ckpt.get("epoch", -1) + 1 	# not in use
-        other 			= ckpt.get("meta", {})			# ...
-        
-        print(f"[load] Loaded checkpoint: {path}")
+
+        torch.save(ckpt, save_path)
+        print(f"[save] Checkpoint saved to {save_path}")
+
+    def load(self, filename = "cnn_ckpt.ckpt", root = "checkpoints/cnn/"):
+        """NOTE: Trainer should be initialized with a compatible model/optimizer before loading."""
+        if not os.path.isdir(root):
+            raise FileNotFoundError(f"[load] No directory named: {root}")
+
+        load_path = os.path.join(root, filename)
+
+        if not os.path.isfile(load_path):
+            raise FileNotFoundError(f"[load] No file named: {load_path}")
+
+        # map_location='cpu' so loading works even if original was trained on CUDA
+        ckpt = torch.load(load_path, map_location="cpu")
+
+        model_meta = ckpt.get("model_meta", None)
+        if model_meta:
+            saved_args = model_meta.get("init_args", {})
+            current_args = getattr(self.model, "init_args", {})
+
+            if saved_args != current_args:
+                print("[load] WARNING: Mismatch between saved model init args and current model init args!")
+                print("Saved:", saved_args)
+                print("Current:", current_args)
+
+        self.model.load_state_dict(ckpt.get("model", {}))
+        self.optimizer.load_state_dict(ckpt.get("optimizer", {}))
+
+        # restore device info (but you can still override externally if you want)
+        self.device = torch.device(ckpt.get("device", str(self.device)))
+
+        self.train_loss_history = ckpt.get("train_loss_history", [])
+        self.train_accuracy_history = ckpt.get("train_accuracy_history", [])
+        self.val_loss_history = ckpt.get("val_loss_history", [])
+        self.val_accuracy_history = ckpt.get("val_accuracy_history", [])
+        self.epoch = ckpt.get("epoch", 0)
+
+        # optional AMP restore
+        if "amp_scaler" in ckpt and hasattr(self, "amp_scaler") and self.amp_scaler is not None:
+            try:
+                self.amp_scaler.load_state_dict(ckpt["amp_scaler"])
+            except Exception:
+                pass
+
+        print(f"[load] Checkpoint loaded from {load_path}")
         
         
         
 
 
 def main():
+    start_time = time.time()
     #--- < CONFIG > ---
     CONFIG = CNNConfig()
+    print("\nConfiguration Values: ")
+    for k, v in asdict(CONFIG).items():
+        print(f" -\t{k}: {v}")
 
 
-    if not os.path.isdir(CONFIG.DATASETS_ROOT):
-        raise FileNotFoundError("DATASETS_ROOT is not a valid directory.")
-    dataset_names, dataset_paths = get_available_datasets(CONFIG.DATASETS_ROOT)
+    # Get available datasets
+    dataset_names, dataset_paths = get_available_datasets(datasets_root=CONFIG.DATASETS_ROOT)
+    print("Available datasets:", *dataset_names, sep="\n", end="\n\n")
+    dataset_index = 0 #int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
+    selected_dataset_path = dataset_paths[dataset_index]
+    print(f"Selected dataset: {selected_dataset_path}\n")
+
+    last_time = time.time()
 
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # --- build audio loader
+    audio_dataset_loader = AudioDatasetLoader(selected_dataset_path, target_sr=CONFIG.TARGET_SR)
 
-    ckpt_path = os.path.join(CONFIG.CHECKPOINTS_ROOT, "cnn_ckpt")
+    # --- feature extraction
+    builder = MelFeatureBuilder()
 
-    #--- < MAIN > ---
-    print("Device: ", device)
-    start_time = time.time()
+    train_dl, val_dl, X, y_encoded, num_classes, reverse_map = builder.build_melspec_train_val_dataloaders(
+        audio_loader=audio_dataset_loader,
+        n_mels=CONFIG.N_MELS,
+        n_fft=CONFIG.N_FFT,
+        hop_length=CONFIG.HOP_LENGTH,
+        batch_size=CONFIG.BATCH_SIZE,
+        val_size=0.2,
+        shuffle_train=True,
+        shuffle_val=False,
+        normalize_audio_volume=CONFIG.NORMALIZE_AUDIO_VOLUME,
+        #normalize_features=CONFIG.NORMALIZE_FEATURES,
+        #standard_scaler=CONFIG.STANDARD_SCALER,
+        seed=42,
+        num_workers=0,
+        pin_memory=True,
+        drop_last=False
+    )
+    # -- data reports
+    # builder._mfcc_report()
+    # builder._audio_report()
 
-    ds, num_classes = build_dataset(dataset_paths[2])
-    print("Data Load Time: " + format_time(time.time() - start_time), end="\n\n")
+    print(f"audio loading & feature extraction time: {time.time() - last_time:.2f}s \n")
 
-    # Initialize Trainer
-    model = CNN()
-    trainer = CNNTrainer(model, num_classes, ds, device)
 
+    xb,_ = next(iter(train_dl))
+    num_features = xb.shape[1]
+    print("num_features:", num_features)
+    print("num_classes:", num_classes)
+    print("class_labels:", [str(lbl) for lbl in reverse_map.values()])
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"device: {device}\n")
+
+
+    # Model and Trainer setup
+    model = CNN(num_classes, base_channels=CONFIG.BASE_CHANNELS, num_blocks=CONFIG.NUM_BLOCKS, hidden_dim=CONFIG.HIDDEN_DIM, dropout=CONFIG.DROPOUT, kernel_size=CONFIG.KERNEL_SIZE)
+    trainer = CNNTrainer(model, train_dl, val_dl, reverse_map=reverse_map, device=device, lr=CONFIG.LR)
+
+    print(f"Full setup time: {time.time() - start_time:.2f}s\n")
+    last_time = time.time()
+
+    # Load
     if CONFIG.LOAD_CHECKPOINT:
         try:
             trainer.load()
         except Exception as e:
-            print("exception: ", e)
+            print("Failed to load checkpoint: ", e)
 
     # Train
-    trainer.train(use_amp=True)
+    trainer.train(CONFIG.EPOCHS, es_window_len=CONFIG.ES_WINDOW_LEN, es_slope_limit=CONFIG.ES_SLOPE_LIMIT, max_clip_norm=CONFIG.MAX_CLIP_NORM, use_amp=CONFIG.USE_AMP)
 
     # Evaluate
-    eval_acc,_ = trainer.evaluate(ds)
-    print("eval accuracy: ", eval_acc)
+    #eval_acc,_ = trainer.evaluate()
+    #print("eval accuracy: ", eval_acc)
 
     # Save
     if CONFIG.SAVE_CHECKPOINT:
-        trainer.save(ckpt_path)
+        trainer.save()
 
-
+    print(f"Training time: {time.time() - last_time:.2f}s\n")
+    last_time = time.time()
 
 
 
@@ -641,12 +723,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-print("Done.")
-
-
-
-
-
+    print("\n--- cnn_trainer execution complete ---\n")
 
 
 

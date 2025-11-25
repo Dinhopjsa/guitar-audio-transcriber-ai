@@ -16,6 +16,7 @@ CONFIG = Config()
 
 def get_available_datasets(datasets_root=CONFIG.DATASETS_ROOT,):
     if not os.path.exists(datasets_root):
+        print("[get_available_datasets] Dataset directory not found.")
         return [], []
     names = []
     paths = []

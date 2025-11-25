@@ -2,6 +2,7 @@ import os, time, json
 from datetime import datetime
 #from pathlib import Path
 from pprint import pprint
+from dataclasses import asdict
 
 import math
 import numpy as np
@@ -32,6 +33,14 @@ class MLP(nn.Module):
 
     def __init__(self, num_features, hidden_dim, num_hidden_layers, num_classes, dropout = 0.1):
         super().__init__()
+
+        self.init_args = {
+            "num_features": num_features,
+            "hidden_dim": hidden_dim,
+            "num_hidden_layers": num_hidden_layers,
+            "num_classes": num_classes,
+            "dropout": dropout,
+        }
 
         layers = []
 
@@ -65,7 +74,7 @@ class MLP(nn.Module):
 
         self.net = nn.Sequential(*layers)
 
-        print("MLP model created: \n", self.net, end="\n\n")
+        #print("MLP model created: \n", self.net, end="\n\n")
 
     def create_model(self, num_features, hidden_dims: list, num_classes, dropout = 0.0): # since we can't overload __init__
         if not hidden_dims:
@@ -122,6 +131,7 @@ class MLPTrainer():
 
         self.reverse_map = reverse_map
         self.class_names = [str(reverse_map[k]) for k in sorted(reverse_map)] if reverse_map else []
+        #self.num_classes = len(self.class_names)
 
         self.train_loss_history     = []
         self.train_accuracy_history = []
@@ -408,7 +418,7 @@ class MLPTrainer():
         #print(f"[evaluate] val accuracy: {acc:.4f}, val loss: {avg_loss:.4f}")
         return acc, avg_loss
 
-    def save(self, filename="checkpoint.ckpt", root="checkpoints/"):
+    def save(self, filename="mlp_ckpt.ckpt", root="checkpoints/mlp/"):
         
         os.makedirs(root, exist_ok=True)
 
@@ -423,13 +433,17 @@ class MLPTrainer():
             "val_loss_history": self.val_loss_history,
             "val_accuracy_history": self.val_accuracy_history,
             "epoch": self.epoch,
+            "model_meta": {
+                "class_names": self.model.__class__.__name__,
+                "init_args": self.model.init_args,
+            },
         }
         
         torch.save(ckpt, save_path)
 
         print(f"[save] Checkpoint saved to {save_path}")
 
-    def load(self, filename="checkpoint.ckpt", root="checkpoints/"):
+    def load(self, filename="mlp_ckpt.ckpt", root="checkpoints/mlp/"):
         """NOTE: must be initialized with same train/val dl which was saved on"""
         if not os.path.isdir(root):
             raise FileNotFoundError(f"[load] No directory named: {root}")
@@ -440,6 +454,16 @@ class MLPTrainer():
             raise FileNotFoundError(f"[load] No file named: {load_path}")
         
         ckpt = torch.load(load_path, map_location="cpu")                                # map_location - safely remaps tensors to cpu (if trained on cuda but none available, will crash)
+
+        model_meta = ckpt.get("model_meta", None)
+        if model_meta:
+            saved_args = model_meta.get("init_args", {})
+            current_args = getattr(self.model, "init_args", {})
+
+            if saved_args != current_args:
+                print("[load] WARNING: Mismatch between saved model init args and current model init args!")
+                print("Saved:", saved_args)
+                print("Current:", current_args)
 
         self.model.load_state_dict(ckpt.get("model", {}))
         self.optimizer.load_state_dict(ckpt.get("optimizer", {}))
@@ -456,25 +480,28 @@ class MLPTrainer():
 
 
 
-#                               ----- < MAIN > -----
+
 def main():
-    # --- setup
-    CONFIG = MLPConfig()
     start_time = time.time()
-    
+    # --- config
+    CONFIG = MLPConfig()
+    print("\nConfiguration Values: ")
+    for k, v in asdict(CONFIG).items():
+        print(f" -\t{k}: {v}")
+
+
     # Get available datasets
     dataset_names, dataset_paths = get_available_datasets(datasets_root=CONFIG.DATASETS_ROOT)
     print("Available datasets:", *dataset_names, sep="\n", end="\n\n")
-    #dataset_index = int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
-    dataset_index = 0 # TODO: remove
+    dataset_index = 2 # int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
     selected_dataset_path = dataset_paths[dataset_index]
     print(f"Selected dataset: {selected_dataset_path}\n")
 
-    ckpt_time = time.time()
+    last_time = time.time()
 
-    # build audio loader
+
+    # --- build audio loader
     audio_dataset_loader = AudioDatasetLoader(selected_dataset_path, target_sr=CONFIG.TARGET_SR)
-
 
     # --- feature extraction
     builder = MelFeatureBuilder()
@@ -498,10 +525,8 @@ def main():
     #builder._mfcc_report()
     #builder._audio_report()
 
-    print(f"audio loading & feature extraction time: {time.time() - ckpt_time:.2f}s")
-    print()
+    print(f"audio loading & feature extraction time: {time.time() - last_time:.2f}s \n")
 
-    ckpt_time = time.time()
 
     xb,_ = next(iter(train_dl))
     num_features = xb.shape[1]
@@ -509,24 +534,28 @@ def main():
     print("num_classes:", num_classes)
     print("class_labels:", [str(lbl) for lbl in reverse_map.values()])
 
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device: {device}\n")
 
+
     # --- model and trainer setup
     model = MLP(num_features, hidden_dim=CONFIG.HIDDEN_DIM, num_hidden_layers=CONFIG.NUM_HIDDEN_LAYERS, num_classes=num_classes, dropout=CONFIG.DROPOUT)
+    trainer = MLPTrainer(model, train_dl, val_dl, reverse_map=reverse_map, device=device, lr=CONFIG.LR)
 
-    trainer = MLPTrainer(model, train_dl, val_dl, reverse_map, device=device)
 
-    print(f"Model and Trainer setup time: {time.time() - ckpt_time:.2f}s\n")
+    print(f"Full setup time: {time.time() - start_time:.2f}s\n")
+    last_time = time.time()
 
     # --- load
     if CONFIG.LOAD_CHECKPOINT:
-        trainer.load()
+        try:
+            trainer.load()
+        except Exception as e:
+            print("Failed to load checkpoint: ", e)
 
 
     # --- training
-    trainer.train(epochs=CONFIG.EPOCHS, es_window_len=CONFIG.ES_WINDOW_LEN, es_slope_limit=CONFIG.ES_SLOPE_LIMIT)
+    trainer.train(epochs=CONFIG.EPOCHS, es_window_len=CONFIG.ES_WINDOW_LEN, es_slope_limit=CONFIG.ES_SLOPE_LIMIT, max_clip_norm=CONFIG.MAX_CLIP_NORM)
 
 
     # --- evaluation
@@ -537,13 +566,14 @@ def main():
     if CONFIG.SAVE_CHECKPOINT:
         trainer.save()
 
-
+    print(f"Training time: {time.time() - last_time:.2f}s\n")
+    last_time = time.time()
 
 
 
 if __name__ == "__main__":
     main()
-    print("\n--- Script execution complete ---\n")
+    print("\n--- mlp_trainer execution complete ---\n")
 
 
 
