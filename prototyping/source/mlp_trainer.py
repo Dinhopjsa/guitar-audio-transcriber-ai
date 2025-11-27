@@ -114,13 +114,17 @@ class MLPTrainer():
             reverse_map = None,
             device = None,
             lr=1e-3,
-            weight_decay=1e-4):
+            weight_decay=1e-4,
+            scaler = None,
+    ):
 
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
         self.model = model.to(self.device)
         self.model.apply(self._init_weights_kaiming) # new
         self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         self.loss_fn = nn.CrossEntropyLoss()
+
+        self.scaler = scaler
 
         self._check_dims(train_dl)
         if val_dl:
@@ -131,7 +135,7 @@ class MLPTrainer():
 
         self.reverse_map = reverse_map
         self.class_names = [str(reverse_map[k]) for k in sorted(reverse_map)] if reverse_map else []
-        #self.num_classes = len(self.class_names)
+        self.num_classes = len(self.class_names) # !...trusting reverse_map instead of train_dl/model...!
 
         self.train_loss_history     = []
         self.train_accuracy_history = []
@@ -376,7 +380,7 @@ class MLPTrainer():
             preds = torch.argmax(logits, dim=1)          # logits to class labels via argmax
             return preds
 
-    def evaluate(self, val_dl=None, cm=False, report=False, show_metrics=False):
+    def evaluate(self, val_dl=None, cm=False, report=False, plot_metrics=False): # TODO: re-implement cm, report, show_metrics
 
         dl = val_dl or self.val_dl
         if not dl:
@@ -406,26 +410,32 @@ class MLPTrainer():
         acc      = correct / total
         avg_loss = total_loss / total
 
-        if show_metrics:
-            self._confusion_matrix(y_true, preds_np, classes=self.class_names, plot=True, normalize=True)
+        #if show_metrics:
+        #    self._confusion_matrix(y_true, preds_np, classes=self.class_names, plot=True, normalize=True)
+        #    self._classification_report(y_true, preds_np, target_names=self.class_names)
+        #else:
+        if cm:
+            self._confusion_matrix(y_true, preds_np, classes=self.class_names, plot=plot_metrics)
+        if report:
             self._classification_report(y_true, preds_np, target_names=self.class_names)
-        else:
-            if cm:
-                self._confusion_matrix(y_true, preds_np, classes=self.class_names)
-            if report:
-                self._classification_report(y_true, preds_np, target_names=self.class_names)
 
         #print(f"[evaluate] val accuracy: {acc:.4f}, val loss: {avg_loss:.4f}")
         return acc, avg_loss
 
-    def save(self, filename="mlp_ckpt.ckpt", root="checkpoints/mlp/"):
-        
-        os.makedirs(root, exist_ok=True)
+    def save(self, filename="mlp_ckpt.ckpt", root="checkpoints/mlp/", config=None):
+        """Used in recreating models, processing new data (same pipeline values), metrics"""
 
+        if config is None:
+            print("[save] Warning. No config provided - using default config.")
+            config = MLPConfig()
+
+        os.makedirs(root, exist_ok=True)
         save_path = os.path.join(root, filename)
 
         ckpt = {
+            "config": config,
             "model": self.model.state_dict(),
+            "model_init_args": self.model.init_args,
             "optimizer": self.optimizer.state_dict(),            
             "device": str(self.device),
             "train_loss_history": self.train_loss_history,
@@ -433,17 +443,17 @@ class MLPTrainer():
             "val_loss_history": self.val_loss_history,
             "val_accuracy_history": self.val_accuracy_history,
             "epoch": self.epoch,
-            "model_meta": {
-                "class_names": self.model.__class__.__name__,
-                "init_args": self.model.init_args,
-            },
+            "reverse_map": self.reverse_map,
+            "num_classes": self.num_classes,
+            "class_names": self.class_names,
+            "scaler": self.scaler,              # new
         }
         
         torch.save(ckpt, save_path)
 
         print(f"[save] Checkpoint saved to {save_path}")
 
-    def load(self, filename="mlp_ckpt.ckpt", root="checkpoints/mlp/"):
+    def load(self, filename="mlp_ckpt.ckpt", root="checkpoints/mlp/"):  # DEPRECIATING
         """NOTE: must be initialized with same train/val dl which was saved on"""
         if not os.path.isdir(root):
             raise FileNotFoundError(f"[load] No directory named: {root}")
@@ -540,7 +550,7 @@ def main():
 
     # --- model and trainer setup
     model = MLP(num_features, hidden_dim=CONFIG.HIDDEN_DIM, num_hidden_layers=CONFIG.NUM_HIDDEN_LAYERS, num_classes=num_classes, dropout=CONFIG.DROPOUT)
-    trainer = MLPTrainer(model, train_dl, val_dl, reverse_map=reverse_map, device=device, lr=CONFIG.LR)
+    trainer = MLPTrainer(model, train_dl, val_dl, reverse_map=reverse_map, device=device, lr=CONFIG.LR, scaler=scaler)
 
 
     print(f"Full setup time: {time.time() - start_time:.2f}s\n")
@@ -559,12 +569,12 @@ def main():
 
 
     # --- evaluation
-    #trainer.evaluate(cm=True, report=True, show_metrics=True)
+    #trainer.evaluate(cm=True, report=True, plot_metrics=True)
 
 
     # --- save
     if CONFIG.SAVE_CHECKPOINT:
-        trainer.save()
+        trainer.save(config=CONFIG)
 
     print(f"Training time: {time.time() - last_time:.2f}s\n")
     last_time = time.time()

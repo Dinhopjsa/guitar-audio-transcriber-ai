@@ -5,7 +5,7 @@ from dataclasses import dataclass
 @dataclass
 class Config:
     PROJECT_ROOT: str        = str(Path(__file__).resolve().parent.parent)
-    DATASETS_ROOT: str       = os.path.join(PROJECT_ROOT, "data", "online", "datasets", "kaggle")
+    DATASETS_ROOT: str       = os.path.join(PROJECT_ROOT, "data", "datasets", "kaggle")
     CHECKPOINTS_ROOT: str    = os.path.join(DATASETS_ROOT, "checkpoints")
 
 
@@ -17,7 +17,7 @@ class MLPConfig(Config):
     TARGET_SR: int                  = 11025
 
     SAVE_CHECKPOINT: bool           = True
-    LOAD_CHECKPOINT: bool           = False
+    LOAD_CHECKPOINT: bool           = False     # DEPRECIATING
 
     N_MFCC: int                     = 20
     BATCH_SIZE: int                 = 32
@@ -32,10 +32,10 @@ class MLPConfig(Config):
     LR: float                       = 1e-3
     DECAY: float                    = 1e-4
 
-    EPOCHS: int                     = 50
+    EPOCHS: int                     = 30
     MAX_CLIP_NORM: float            = 1.0
     ES_WINDOW_LEN: int              = 5
-    ES_SLOPE_LIMIT: float           = -0.0001
+    ES_SLOPE_LIMIT: float           = -0.0001   # closer to 0 == earlier stopping
 
 
 
@@ -47,7 +47,7 @@ class CNNConfig(Config):
     TARGET_SR: int                  = 11025
 
     SAVE_CHECKPOINT: bool           = True
-    LOAD_CHECKPOINT: bool           = False
+    LOAD_CHECKPOINT: bool           = False     # DEPRECIATING
 
     N_MELS: int                     = 128
     N_FFT: int                      = 512
@@ -65,9 +65,9 @@ class CNNConfig(Config):
     LR: float                       = 1e-3
     DECAY: float                    = 1e-4
 
-    EPOCHS: int                     = 50
+    EPOCHS: int                     = 30
     MAX_CLIP_NORM: float            = 1.0
-    ES_WINDOW_LEN: int              = 5
+    ES_WINDOW_LEN: int              = 4
     ES_SLOPE_LIMIT: float           = -0.0001
     USE_AMP: bool                   = True
 

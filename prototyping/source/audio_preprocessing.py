@@ -104,6 +104,9 @@ class AudioDatasetLoader:
         return wavs, srs, labels, paths
 
 
+
+
+
 class MelFeatureBuilder:
     """
     Unified feature builder for MFCC and Mel-spectrogram features.
@@ -231,9 +234,7 @@ class MelFeatureBuilder:
     def _normalize_audio_volume(self, y, eps=1e-9):
         return y / (np.max(np.abs(y)) + eps)
 
-    # ---------------------------------------------------------------------
-    # MFCC FEATURES (same behavior as your original MFCCFeatureBuilder)
-    # ---------------------------------------------------------------------
+    # --- MFCC Functions ---
     def extract_mfcc_features(self,
                               audio_loader,
                               n_mfcc=13,
@@ -341,9 +342,7 @@ class MelFeatureBuilder:
 
         return dl_tr, dl_val, X, y_encoded, num_classes, reverse_map, scaler
 
-    # ---------------------------------------------------------------------
-    # MEL-SPECTROGRAM FEATURES (for CNN)
-    # ---------------------------------------------------------------------
+    # --- Mel Spectrogram Functions ---
     def extract_melspec_features(
         self,
         audio_loader,

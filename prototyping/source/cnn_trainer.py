@@ -255,7 +255,7 @@ class CNNTrainer():
         self.val_dl             = val_dl
         self.reverse_map        = reverse_map
         self.class_names        = [str(reverse_map[k]) for k in sorted(reverse_map)] if reverse_map else []
-        #self.num_classes = len(self.class_names)
+        self.num_classes = len(self.class_names) # !...trusting reverse_map instead of train_dl/model...!
 
         self.train_loss_history     = []
         self.train_accuracy_history = []
@@ -496,7 +496,7 @@ class CNNTrainer():
 
         print("[train] CNN training complete.\n")
 
-    def evaluate(self, val_dl=None, use_amp=True, cm=False, report=False, metrics=False):
+    def evaluate(self, val_dl=None, use_amp=True, cm=False, report=False, plot_metrics=False): # TODO: re-implement cm, report, show_metrics
         dl = val_dl or self.val_dl
         if dl is None:
             print(f"[evaluate] No val dataloader provided.")
@@ -536,26 +536,32 @@ class CNNTrainer():
         acc = correct / total if total > 0 else 0.0
         avg_loss = loss_sum / total if total > 0 else 0.0
 
-        if metrics:
-            # full metrics mode: normalized cm + classification report
-            self._confusion_matrix(y_true, preds_np, classes=self.class_names, plot=True, normalize=True)
+        #if show_metrics:
+        #    # full metrics mode: normalized cm + classification report
+        #    self._confusion_matrix(y_true, preds_np, classes=self.class_names, plot=True, normalize=True)
+        #    self._classification_report(y_true, preds_np, target_names=self.class_names)
+        #else:
+        if cm:
+            self._confusion_matrix(y_true, preds_np, classes=self.class_names, plot=plot_metrics)
+        if report:
             self._classification_report(y_true, preds_np, target_names=self.class_names)
-        else:
-            if cm:
-                self._confusion_matrix(y_true, preds_np, classes=self.class_names)
-            if report:
-                self._classification_report(y_true, preds_np, target_names=self.class_names)
 
         #print("Eval time: ", format_time(time.time() - eval_start_time))
         #print(f"[evaluate] val accuracy: {acc:.4f}, val loss: {avg_loss:.4f}")
         return acc, avg_loss
     
-    def save(self, filename = "cnn_ckpt.ckpt", root = "checkpoints/cnn/"):
+    def save(self, filename = "cnn_ckpt.ckpt", root = "checkpoints/cnn/", config = None):
+        if config is None:
+            print("[save] Warning. No config provided - using default config.")
+            config = CNNConfig()
+
         os.makedirs(root, exist_ok=True)
         save_path = os.path.join(root, filename)
 
         ckpt = {
+            "config": config,
             "model": self.model.state_dict(),
+            "model_init_args": self.model.init_args,
             "optimizer": self.optimizer.state_dict(),
             "device": str(self.device),
             "train_loss_history": getattr(self, "train_loss_history", []),
@@ -563,10 +569,9 @@ class CNNTrainer():
             "val_loss_history": getattr(self, "val_loss_history", []),
             "val_accuracy_history": getattr(self, "val_accuracy_history", []),
             "epoch": getattr(self, "epoch", 0),
-            "model_meta": {
-                "class_names": self.model.__class__.__name__,
-                "init_args": self.model.init_args,
-            },
+            "reverse_map": self.reverse_map,
+            "num_classes": self.num_classes,
+            "class_names": self.class_names,
         }
 
         # optional AMP scaler state
@@ -579,7 +584,7 @@ class CNNTrainer():
         torch.save(ckpt, save_path)
         print(f"[save] Checkpoint saved to {save_path}")
 
-    def load(self, filename = "cnn_ckpt.ckpt", root = "checkpoints/cnn/"):
+    def load(self, filename = "cnn_ckpt.ckpt", root = "checkpoints/cnn/"):  # DEPRECIATING
         """NOTE: Trainer should be initialized with a compatible model/optimizer before loading."""
         if not os.path.isdir(root):
             raise FileNotFoundError(f"[load] No directory named: {root}")
@@ -639,7 +644,7 @@ def main():
     # Get available datasets
     dataset_names, dataset_paths = get_available_datasets(datasets_root=CONFIG.DATASETS_ROOT)
     print("Available datasets:", *dataset_names, sep="\n", end="\n\n")
-    dataset_index = 0 #int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
+    dataset_index = 2 #int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
     selected_dataset_path = dataset_paths[dataset_index]
     print(f"Selected dataset: {selected_dataset_path}\n")
 
@@ -693,28 +698,24 @@ def main():
     print(f"Full setup time: {time.time() - start_time:.2f}s\n")
     last_time = time.time()
 
-    # Load
+    # - Load
     if CONFIG.LOAD_CHECKPOINT:
         try:
             trainer.load()
         except Exception as e:
             print("Failed to load checkpoint: ", e)
 
-    # Train
+    # - Train
     trainer.train(CONFIG.EPOCHS, es_window_len=CONFIG.ES_WINDOW_LEN, es_slope_limit=CONFIG.ES_SLOPE_LIMIT, max_clip_norm=CONFIG.MAX_CLIP_NORM, use_amp=CONFIG.USE_AMP)
 
-    # Evaluate
-    #eval_acc,_ = trainer.evaluate()
-    #print("eval accuracy: ", eval_acc)
+    # - Evaluate
+    # ...
 
-    # Save
+    # - Save
     if CONFIG.SAVE_CHECKPOINT:
-        trainer.save()
+        trainer.save(config=CONFIG)
 
     print(f"Training time: {time.time() - last_time:.2f}s\n")
-    last_time = time.time()
-
-
 
 
 

@@ -9,10 +9,10 @@ import csv
 #from tqdm import tqdm
 
 # PROJECT_ROOT = os.path.abspath(os.path.join(__file__, "..", ".."))
-# CLIPS_ROOT = os.path.join(PROJECT_ROOT, "data", "personal", "clips", "neck")
+# CLIPS_ROOT = os.path.join(PROJECT_ROOT, "data", "personal", "recordings", "neck")
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CLIPS_ROOT = PROJECT_ROOT / "data" / "personal" / "clips" / "neck"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+CLIPS_ROOT = PROJECT_ROOT / "data" / "personal" / "recordings" / "active" / "neck"
 
 OUT_ROOT = PROJECT_ROOT / "data" / "personal" / "datasets" / "open notes"
 
