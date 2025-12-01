@@ -1,19 +1,12 @@
 import os, time
 from pathlib import Path
 from config import *
-from audio_preprocessing import *
-from mlp_trainer import *
-from cnn_trainer import *
+from audio_processing.audio_preprocessing import *
+from trainers.mlp_trainer import *
+from trainers.cnn_trainer import *
 import numpy as np
 import torch
 
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-AUDIO_NAME = "E2_Only"
-AUDIO_NUMBER = ""
-
-IN_CLIPS_ROOT = PROJECT_ROOT / "data" / "inference" / "guitar_note_clips"
-IN_CLIPS_DIR = IN_CLIPS_ROOT / f"{AUDIO_NAME}{AUDIO_NUMBER}"
 
 
 class NotePredictor:
@@ -28,7 +21,7 @@ class NotePredictor:
 
         self.configs = {"mlp_config":None, "cnn_config":None}
 
-        self.cnn_weight = 0.75                       # default weight
+        self.cnn_weight = 0.5
         self.mlp_weight = (1.0 - self.cnn_weight)
 
 
@@ -37,10 +30,6 @@ class NotePredictor:
             self,
             mlp_ckpt_data: dict = None,
             cnn_ckpt_data: dict = None,
-        #mlp_ckpt: str = "mlp_ckpt.ckpt",
-        #cnn_ckpt: str = "cnn_ckpt.ckpt",
-        #mlp_root: str = "checkpoints/mlp/",
-        #cnn_root: str = "checkpoints/cnn/",
     ):
         """Loads: mlp, cnn, reverse_map from checkpoints."""
 

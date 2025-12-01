@@ -1,11 +1,11 @@
-import os, time
+import os, time, argparse
 from pathlib import Path
 from datetime import datetime
 from pprint import pprint
 
 from config import *
-from audio_preprocessing import AudioDatasetLoader, MelFeatureBuilder, get_available_datasets
-from audio_slicer import AudioSlicer
+from audio_processing.audio_preprocessing import AudioDatasetLoader, MelFeatureBuilder, get_available_datasets
+from audio_processing.audio_slicer import AudioSlicer
 from note_predictor import NotePredictor
 
 import torch
@@ -39,10 +39,10 @@ class Transcriber():
 
     def load_model_data(
             self,
-            mlp_ckpt: str = "mlp_ckpt.ckpt",
-            cnn_ckpt: str = "cnn_ckpt.ckpt",
-            mlp_root: str = "checkpoints/mlp/",
-            cnn_root: str = "checkpoints/cnn/"
+            mlp_ckpt: Path | str = "mlp_ckpt.ckpt",
+            cnn_ckpt: Path | str = "cnn_ckpt.ckpt",
+            mlp_root: Path | str = "trainers/checkpoints/mlp/",
+            cnn_root: Path | str = "trainers/checkpoints/cnn/"
     ):
         # ---- Load MLP checkpoint ----
         mlp_path = os.path.join(mlp_root, mlp_ckpt)
@@ -61,9 +61,7 @@ class Transcriber():
         #self.model_configs["cnn"] = self.cnn_ckpt_data["config"]
 
 
-
-
-    def transcribe(self, audio_path, out_root, audio_name="audio", target_sr=11025, clips_len=0.5):
+    def transcribe(self, audio_path: Path, out_root: Path, audio_name="audio", target_sr=11025, clips_len=0.5):
         timestamp = datetime.now().strftime("%m-%d_%H-%M-%S")
         out_dir = out_root / f"{audio_name}_{timestamp}"
 
@@ -82,23 +80,24 @@ class Transcriber():
         # map to TAB
         # - - - - - -
 
-        pprint(" ".join(str(x) for x in prediction["labels"]))
 
         return prediction
 
+
+
 def main():
-    cfg = TranscribeConfig()
+    trans_cfg = TranscribeConfig()
 
     audio_name = "E2_Only"
-
-    in_audio_path = cfg.INFERENCE_AUDIO_ROOT / audio_name / f"{audio_name}.wav"
-
-    out_audio_root = cfg.INFERENCE_CLIPS_ROOT / "Transcriber"
+    in_audio_path = trans_cfg.INFERENCE_AUDIO_ROOT / f"{audio_name}.wav"
+    out_audio_root = trans_cfg.INFERENCE_CLIPS_ROOT / "Transcriber"
 
     transcriber = Transcriber()
-    transcriber.transcribe(in_audio_path, out_audio_root, audio_name, target_sr=11025, clips_len=0.5)
+    result = transcriber.transcribe(in_audio_path, out_audio_root, audio_name, target_sr=11025, clips_len=0.5)
 
-    print("SUCCESS!")
+    print(" ".join(str(x) for x in result["labels"]))
+
+    print("\nTranscriber finished.\n")
 
     
     

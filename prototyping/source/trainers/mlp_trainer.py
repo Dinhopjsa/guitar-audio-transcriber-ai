@@ -1,6 +1,6 @@
 import os, time, json
 from datetime import datetime
-#from pathlib import Path
+from pathlib import Path
 from pprint import pprint
 from dataclasses import asdict
 
@@ -21,7 +21,7 @@ import sklearn.metrics as metrics
 import matplotlib.pyplot as plt
 
 from config import MLPConfig
-from audio_preprocessing import *
+from audio_processing.audio_preprocessing import *
 
 
 
@@ -491,19 +491,19 @@ class MLPTrainer():
 
 
 
-def main():
+def main(): # DEPRECIATING - MOVING TO TRAINING MANAGER
     start_time = time.time()
     # --- config
-    CONFIG = MLPConfig()
+    mlp_cfg = MLPConfig()
     print("\nConfiguration Values: ")
-    for k, v in asdict(CONFIG).items():
+    for k, v in asdict(mlp_cfg).items():
         print(f" -\t{k}: {v}")
 
 
     # Get available datasets
-    dataset_names, dataset_paths = get_available_datasets(datasets_root=CONFIG.DATASETS_ROOT)
+    dataset_names, dataset_paths = get_available_datasets(datasets_root=mlp_cfg.DATASETS_ROOT)
     print("Available datasets:", *dataset_names, sep="\n", end="\n\n")
-    dataset_index = 2 # int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
+    dataset_index = int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
     selected_dataset_path = dataset_paths[dataset_index]
     print(f"Selected dataset: {selected_dataset_path}\n")
 
@@ -511,21 +511,21 @@ def main():
 
 
     # --- build audio loader
-    audio_dataset_loader = AudioDatasetLoader(selected_dataset_path, target_sr=CONFIG.TARGET_SR)
+    audio_dataset_loader = AudioDatasetLoader(selected_dataset_path, target_sr=mlp_cfg.TARGET_SR)
 
     # --- feature extraction
     builder = MelFeatureBuilder()
     
     train_dl, val_dl, X, y_encoded, num_classes, reverse_map, scaler = builder.build_mfcc_train_val_dataloaders(
         audio_loader=audio_dataset_loader,
-        n_mfcc=CONFIG.N_MFCC,
-        batch_size=CONFIG.BATCH_SIZE,
+        n_mfcc=mlp_cfg.N_MFCC,
+        batch_size=mlp_cfg.BATCH_SIZE,
         val_size=0.2,
         shuffle_train=True,
         shuffle_val=False,
-        normalize_audio_volume=CONFIG.NORMALIZE_AUDIO_VOLUME,
-        normalize_features=CONFIG.NORMALIZE_FEATURES,
-        standard_scaler=CONFIG.STANDARD_SCALER,
+        normalize_audio_volume=mlp_cfg.NORMALIZE_AUDIO_VOLUME,
+        normalize_features=mlp_cfg.NORMALIZE_FEATURES,
+        standard_scaler=mlp_cfg.STANDARD_SCALER,
         seed=42,
         num_workers=0,
         pin_memory=True,
@@ -549,15 +549,15 @@ def main():
 
 
     # --- model and trainer setup
-    model = MLP(num_features, hidden_dim=CONFIG.HIDDEN_DIM, num_hidden_layers=CONFIG.NUM_HIDDEN_LAYERS, num_classes=num_classes, dropout=CONFIG.DROPOUT)
-    trainer = MLPTrainer(model, train_dl, val_dl, reverse_map=reverse_map, device=device, lr=CONFIG.LR, scaler=scaler)
+    model = MLP(num_features, hidden_dim=mlp_cfg.HIDDEN_DIM, num_hidden_layers=mlp_cfg.NUM_HIDDEN_LAYERS, num_classes=num_classes, dropout=mlp_cfg.DROPOUT)
+    trainer = MLPTrainer(model, train_dl, val_dl, reverse_map=reverse_map, device=device, lr=mlp_cfg.LR, scaler=scaler)
 
 
     print(f"Full setup time: {time.time() - start_time:.2f}s\n")
     last_time = time.time()
 
     # --- load
-    if CONFIG.LOAD_CHECKPOINT:
+    if mlp_cfg.LOAD_CHECKPOINT:
         try:
             trainer.load()
         except Exception as e:
@@ -565,7 +565,7 @@ def main():
 
 
     # --- training
-    trainer.train(epochs=CONFIG.EPOCHS, es_window_len=CONFIG.ES_WINDOW_LEN, es_slope_limit=CONFIG.ES_SLOPE_LIMIT, max_clip_norm=CONFIG.MAX_CLIP_NORM)
+    trainer.train(epochs=mlp_cfg.EPOCHS, es_window_len=mlp_cfg.ES_WINDOW_LEN, es_slope_limit=mlp_cfg.ES_SLOPE_LIMIT, max_clip_norm=mlp_cfg.MAX_CLIP_NORM)
 
 
     # --- evaluation
@@ -573,64 +573,18 @@ def main():
 
 
     # --- save
-    if CONFIG.SAVE_CHECKPOINT:
-        trainer.save(config=CONFIG)
+    if mlp_cfg.SAVE_CHECKPOINT:
+        trainer.save(config=mlp_cfg)
 
     print(f"Training time: {time.time() - last_time:.2f}s\n")
-    last_time = time.time()
 
-
-
-if __name__ == "__main__":
-    main()
     print("\n--- mlp_trainer execution complete ---\n")
 
 
+if __name__ == "__main__":
+    #main()
+    pass
 
-
-
-
-
-
-### HYPERPARAMETER TUNINGS
-# @mfcc feature builder
-#   n_mfcc:                 20 gave better results for kaggle_electric
-#   normalize_features:     False - better for CNN - don't use with Std Scaler
-#   standard_scaler:        True -
-#
-# @mlp
-#   hidden_dim:             128 base results
-#   num_hidden_layers:      2 base results
-#   dropout:                0.0 base results - .1-.3 helps prevent overfitting, kept good accuracy on val for kaggle_electric
-#
-#
-#
-#
-#
-#
-#
-###
-
-"""    DATASETS_ROOT           = CONFIG.DATASETS_ROOT
-
-    SAVE_CHECKPOINT         = CONFIG.SAVE_CHECKPOINT
-    LOAD_CHECKPOINT         = CONFIG.LOAD_CHECKPOINT
-
-    TARGET_SR               = CONFIG.TARGET_SR
-
-    N_MFCC                  = CONFIG.N_MFCC
-    BATCH_SIZE              = CONFIG.BATCH_SIZE
-    NORMALIZE_FEATURES      = CONFIG.NORMALIZE_FEATURES
-    STANDARD_SCALER         = CONFIG.STANDARD_SCALER
-    NORMALIZE_AUDIO_VOLUME  = CONFIG.NORMALIZE_AUDIO_VOLUME
-
-    HIDDEN_DIM              = CONFIG.HIDDEN_DIM
-    NUM_HIDDEN_LAYERS       = CONFIG.NUM_HIDDEN_LAYERS
-    DROPOUT                 = CONFIG.DROPOUT
-
-    EPOCHS                  = CONFIG.EPOCHS
-    ES_WINDOW_LEN           = CONFIG.ES_WINDOW_LEN
-    ES_SLOPE_LIMIT          = CONFIG.ES_SLOPE_LIMIT"""
 
 
 

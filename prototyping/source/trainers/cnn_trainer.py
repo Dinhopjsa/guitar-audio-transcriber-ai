@@ -20,110 +20,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import sklearn.metrics as metrics
 
-from audio_preprocessing import *
-from config import *
+from audio_processing.audio_preprocessing import *
+from config import CNNConfig
 
-# Torch CNN expects (batch_size, channels, height, width)
-#
-# 	log-mel spectrogram tensor shape (1, 128, T) : dtype should be X.float()
-# 		1 	- input channel (grayscale)
-#		128 - mel-frequency bins -> n_mels -> height
-#		T 	- time frames -> width (depends on clip length and hop_length)
-#
-#	encoded_labels shape (N,) : dtype should be y.long()
-#		
-
-
-from typing import List
-
-
-
-def format_time(time):
-    return "{:.5f}s".format(time)
-
-def format_float(x, precision=2):
-    return "{:.{}f}".format(x, precision)
-
-
-class Preprocess:
-    def encode_labels_to_ints(labels):
-        # -: return list of mapped labels to ints
-        classes = sorted(set(labels)) 							# unique label names
-        label_to_idx = {c: i for i, c in enumerate(classes)}    # map to int
-        
-        encoded_labels = [label_to_idx[l] for l in labels]		# mapped list
-        
-        return encoded_labels, len(classes)						# (list of ints corresponding to label in labels), (num of classes)
-             
-    def load_audio_dataset(root):
-        file_paths = []
-        labels = []
-
-        for root, dirs, files in os.walk(root):
-            for fname in files:
-                if fname.lower().endswith(".wav"):
-                    file_path = os.path.join(root, fname)
-                    
-                    label_folder = os.path.basename(root)
-                    label = label_folder.split("-")[-1]
-                    
-                    file_paths.append(file_path)
-                    labels.append(label)
-        
-        return file_paths, labels
-
-    def build_mel_specs(wav_paths, sr=11025):
-        specs = []
-        mel = ta.transforms.MelSpectrogram(
-                    sample_rate=sr, n_fft=1024, hop_length=256, n_mels=128, power=2.0
-                )
-        to_db = ta.transforms.AmplitudeToDB(stype="power")
-
-        
-        for i in range(len(wav_paths)):
-            
-            y, sr = librosa.load(wav_paths[i], sr=sr, mono=True)	# resamples to target_sr
-            y = torch.from_numpy(y).unsqueeze(0)						# (1, Time Frames (T))
-            
-            spec = mel(y)
-            spec_db = to_db(spec)
-                
-            specs.append(spec_db)
-        
-        return specs
-            
-    def pad_or_crop_to_max(specs):
-        # Find max time dimension
-        max_T = max(s.shape[-1] for s in specs)
-        out = []
-        
-        for s in specs:
-            T = s.shape[-1]
-            
-            if T < max_T:
-                s = F.pad(s, (0, max_T - T)) 	# pad last dimension
-                
-            elif T > max_T:
-                s = s[..., :max_T]				# crop
-                
-            out.append(s)
-            
-        return out
-        
-    def build_tensor(X, y):
-        return torch.stack(X), torch.tensor(y, dtype=torch.long) #-> (N, 1, n_mels, T) 4D tensor, (encoded labels - 1D tensor (N,))
-def build_dataset(root):
-    wavs, labels = Preprocess.load_audio_dataset(root)
-    encoded_labels, num_classes = Preprocess.encode_labels_to_ints(labels)
-
-    specs = Preprocess.build_mel_specs(wavs)
-    specs = Preprocess.pad_or_crop_to_max(specs)
-
-    X, y = Preprocess.build_tensor(specs, encoded_labels)
-    ds = TensorDataset(X, y)
-    
-    return ds, num_classes 
-    
 
 
 class CNN(nn.Module):
@@ -226,7 +125,6 @@ class CNN(nn.Module):
     def forward(self, x):
         x = self.net(x)
         return x
-
 
 
 class CNNTrainer():
@@ -507,7 +405,7 @@ class CNNTrainer():
         preds_np = []
         y_true = []
 
-        print("Evaluate start.")
+        #print("Evaluate start.")
         eval_start_time = time.time()
 
         use_amp = use_amp and getattr(self.device, "type", str(self.device)) == "cuda"
@@ -632,19 +530,19 @@ class CNNTrainer():
         
 
 
-def main():
+def main(): # DEPRECIATING - MOVING TOWARDS TRAINING MANAGER
     start_time = time.time()
     #--- < CONFIG > ---
-    CONFIG = CNNConfig()
+    cnn_cfg = CNNConfig()
     print("\nConfiguration Values: ")
-    for k, v in asdict(CONFIG).items():
+    for k, v in asdict(cnn_cfg).items():
         print(f" -\t{k}: {v}")
 
 
     # Get available datasets
-    dataset_names, dataset_paths = get_available_datasets(datasets_root=CONFIG.DATASETS_ROOT)
+    dataset_names, dataset_paths = get_available_datasets(datasets_root=cnn_cfg.DATASETS_ROOT)
     print("Available datasets:", *dataset_names, sep="\n", end="\n\n")
-    dataset_index = 2 #int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
+    dataset_index = int(input(f"Enter dataset index (0 to {len(dataset_names)-1}): "))
     selected_dataset_path = dataset_paths[dataset_index]
     print(f"Selected dataset: {selected_dataset_path}\n")
 
@@ -652,23 +550,23 @@ def main():
 
 
     # --- build audio loader
-    audio_dataset_loader = AudioDatasetLoader(selected_dataset_path, target_sr=CONFIG.TARGET_SR)
+    audio_dataset_loader = AudioDatasetLoader(selected_dataset_path, target_sr=cnn_cfg.TARGET_SR)
 
     # --- feature extraction
     builder = MelFeatureBuilder()
 
     train_dl, val_dl, X, y_encoded, num_classes, reverse_map = builder.build_melspec_train_val_dataloaders(
         audio_loader=audio_dataset_loader,
-        n_mels=CONFIG.N_MELS,
-        n_fft=CONFIG.N_FFT,
-        hop_length=CONFIG.HOP_LENGTH,
-        batch_size=CONFIG.BATCH_SIZE,
+        n_mels=cnn_cfg.N_MELS,
+        n_fft=cnn_cfg.N_FFT,
+        hop_length=cnn_cfg.HOP_LENGTH,
+        batch_size=cnn_cfg.BATCH_SIZE,
         val_size=0.2,
         shuffle_train=True,
         shuffle_val=False,
-        normalize_audio_volume=CONFIG.NORMALIZE_AUDIO_VOLUME,
-        #normalize_features=CONFIG.NORMALIZE_FEATURES,
-        #standard_scaler=CONFIG.STANDARD_SCALER,
+        normalize_audio_volume=cnn_cfg.NORMALIZE_AUDIO_VOLUME,
+        #normalize_features=cnn_cfg.NORMALIZE_FEATURES,
+        #standard_scaler=cnn_cfg.STANDARD_SCALER,
         seed=42,
         num_workers=0,
         pin_memory=True,
@@ -692,48 +590,39 @@ def main():
 
 
     # Model and Trainer setup
-    model = CNN(num_classes, base_channels=CONFIG.BASE_CHANNELS, num_blocks=CONFIG.NUM_BLOCKS, hidden_dim=CONFIG.HIDDEN_DIM, dropout=CONFIG.DROPOUT, kernel_size=CONFIG.KERNEL_SIZE)
-    trainer = CNNTrainer(model, train_dl, val_dl, reverse_map=reverse_map, device=device, lr=CONFIG.LR)
+    model = CNN(num_classes, base_channels=cnn_cfg.BASE_CHANNELS, num_blocks=cnn_cfg.NUM_BLOCKS, hidden_dim=cnn_cfg.HIDDEN_DIM, dropout=cnn_cfg.DROPOUT, kernel_size=cnn_cfg.KERNEL_SIZE)
+    trainer = CNNTrainer(model, train_dl, val_dl, reverse_map=reverse_map, device=device, lr=cnn_cfg.LR)
 
     print(f"Full setup time: {time.time() - start_time:.2f}s\n")
     last_time = time.time()
 
     # - Load
-    if CONFIG.LOAD_CHECKPOINT:
+    if cnn_cfg.LOAD_CHECKPOINT:
         try:
             trainer.load()
         except Exception as e:
             print("Failed to load checkpoint: ", e)
 
     # - Train
-    trainer.train(CONFIG.EPOCHS, es_window_len=CONFIG.ES_WINDOW_LEN, es_slope_limit=CONFIG.ES_SLOPE_LIMIT, max_clip_norm=CONFIG.MAX_CLIP_NORM, use_amp=CONFIG.USE_AMP)
+    trainer.train(cnn_cfg.EPOCHS, es_window_len=cnn_cfg.ES_WINDOW_LEN, es_slope_limit=cnn_cfg.ES_SLOPE_LIMIT, max_clip_norm=cnn_cfg.MAX_CLIP_NORM, use_amp=cnn_cfg.USE_AMP)
 
     # - Evaluate
     # ...
 
     # - Save
-    if CONFIG.SAVE_CHECKPOINT:
-        trainer.save(config=CONFIG)
+    if cnn_cfg.SAVE_CHECKPOINT:
+        trainer.save(config=cnn_cfg)
 
     print(f"Training time: {time.time() - last_time:.2f}s\n")
 
-
-
-
-
-
-if __name__ == "__main__":
-    main()
     print("\n--- cnn_trainer execution complete ---\n")
 
 
+if __name__ == "__main__":
+    #main()
+    pass
 
 
-
-
-# FASTAI example (wrapper over torch, retains same torch functionality
-#	learn = Learner(dls, model, loss_func=CrossEntropyLossFlat(), metrics=accuracy)
-#	learn.fit_one_cycle(5, 1e-3)
 
 
 

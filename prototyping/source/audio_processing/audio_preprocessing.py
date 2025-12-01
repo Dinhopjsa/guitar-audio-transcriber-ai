@@ -10,9 +10,9 @@ from sklearn.model_selection import train_test_split
 import torch
 import torchaudio as ta
 from torch.utils.data import Dataset, TensorDataset, DataLoader
-from config import Config, MLPConfig, CNNConfig
+from config import *
 
-_CONFIG = Config()
+_CONFIG = BaseConfig()
 
 
 def get_available_datasets(datasets_root=_CONFIG.DATASETS_ROOT):
@@ -32,15 +32,12 @@ def get_available_datasets(datasets_root=_CONFIG.DATASETS_ROOT):
         return []
     return names, paths
 
-#@dataclass
-#class FeatureBundle:
-#    pass
 
 
 class AudioDatasetLoader:
     def __init__(self,
-                 dataset_root: str,
-                 target_sr: int = 22050,
+                 dataset_root: Path | str,
+                 target_sr: int = 11025,
                  mono: bool = True,
                  test_size: float = 0.2,
                  duration: float | None = None):
@@ -103,9 +100,6 @@ class AudioDatasetLoader:
             wavs = [np.pad(w, (0, max_len - len(w)), mode="constant") for w in wavs]
 
         return wavs, srs, labels, paths
-
-
-
 
 
 class MelFeatureBuilder:
@@ -433,8 +427,7 @@ class MelFeatureBuilder:
         y_encoded, num_classes, reverse_map = self._encode_labels_to_ints(y)
         y_encoded = np.array(y_encoded, dtype=int)
 
-        print(f"Extracted Mel-spectrogram features for {X.shape[0]} samples. X shape: {tuple(X.shape)}")
-
+        #print(f"Extracted Mel-spectrogram features for {X.shape[0]} samples. X shape: {tuple(X.shape)}")
         return X, y_encoded, num_classes, reverse_map
 
     def build_melspec_dataloader(self,
