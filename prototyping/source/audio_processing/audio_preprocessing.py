@@ -12,10 +12,8 @@ import torchaudio as ta
 from torch.utils.data import Dataset, TensorDataset, DataLoader
 from config import *
 
-_CONFIG = BaseConfig()
 
-
-def get_available_datasets(datasets_root=_CONFIG.DATASETS_ROOT):
+def get_available_datasets(datasets_root):
     if not os.path.exists(datasets_root):
         print("[get_available_datasets] Dataset directory not found.")
         return [], []
@@ -29,7 +27,7 @@ def get_available_datasets(datasets_root=_CONFIG.DATASETS_ROOT):
                 paths.append(path)
     except Exception as e:
         print(f"Error accessing dataset directory: {e} at {datasets_root}")
-        return []
+        return [], []
     return names, paths
 
 
@@ -109,10 +107,9 @@ class MelFeatureBuilder:
     The class caches the *last extracted* features in:
         self.X, self.y_encoded, self.num_classes, self.reverse_map
     """
-    def __init__(self,
-                 seed: int = 42):
-        # Later: self.config = config: FeatureConfig ?
-        np.random.seed(seed)
+    def __init__(self):
+        #np.random.seed(seed)
+        pass
 
     # ---------------------------------------------------------------------
     # Reports
@@ -229,6 +226,8 @@ class MelFeatureBuilder:
     def _normalize_audio_volume(self, y, eps=1e-9):
         return y / (np.max(np.abs(y)) + eps)
 
+
+    # --- INFERENCE Functions
     def extract_inference_features(self,
                                    audio_loader: AudioDatasetLoader,
                                    mlp_config: MLPConfig,
@@ -254,6 +253,7 @@ class MelFeatureBuilder:
         )
 
         return mfcc_features, melspec_features
+
 
     # --- MFCC Functions ---
     def extract_mfcc_features(self,

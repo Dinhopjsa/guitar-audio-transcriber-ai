@@ -61,15 +61,15 @@ class Transcriber():
         #self.model_configs["cnn"] = self.cnn_ckpt_data["config"]
 
 
-    def transcribe(self, audio_path: Path, out_root: Path, audio_name="audio", target_sr=11025, clips_len=0.5):
+    def transcribe(self, audio_path: Path, out_root: Path, audio_name="audio", clip_target_sr=44100, clip_len=0.5):
         timestamp = datetime.now().strftime("%m-%d_%H-%M-%S")
         out_dir = out_root / f"{audio_name}_{timestamp}"
 
         # slice audio to clips
-        self.slicer.sliceNsave(audio_path, out_dir, target_sr, length_sec=clips_len)
+        self.slicer.sliceNsave(audio_path, out_dir, clip_target_sr, length_sec=clip_len)
 
         # load clips in database format
-        audio_loader = AudioDatasetLoader(out_root)
+        audio_loader = AudioDatasetLoader(out_root, target_sr=clip_target_sr, duration=clip_len)
 
         # convert to features using the same preprocessing as trained models
         mfcc_features, melspec_features = self.feature_builder.extract_inference_features(audio_loader, self.model_configs["mlp"], self.model_configs["cnn"], self.mlp_ckpt_data["scaler"])
@@ -86,16 +86,18 @@ class Transcriber():
 
 
 def main():
-    trans_cfg = TranscribeConfig()
+    base_cfg = BaseConfig()
 
+    # temporary
     audio_name = "E2_Only"
-    in_audio_path = trans_cfg.INFERENCE_AUDIO_ROOT / f"{audio_name}.wav"
-    out_audio_root = trans_cfg.INFERENCE_CLIPS_ROOT / "Transcriber"
+    in_audio_path = base_cfg.INFERENCE_AUDIO_ROOT / f"{audio_name}.wav"
+    out_audio_root = base_cfg.INFERENCE_CLIPS_ROOT / "Transcriber"
 
     transcriber = Transcriber()
-    result = transcriber.transcribe(in_audio_path, out_audio_root, audio_name, target_sr=11025, clips_len=0.5)
+    result = transcriber.transcribe(in_audio_path, out_audio_root, audio_name, clip_target_sr=11025, clip_len=0.5)
 
-    print(" ".join(str(x) for x in result["labels"]))
+    print(" ".join(str(x[:4]) for x in result["labels"]))
+    print(" ".join(f"{x:.2f}" for x in result["confidences"]))
 
     print("\nTranscriber finished.\n")
 

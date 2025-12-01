@@ -12,8 +12,13 @@ from trainers.cnn_trainer import CNN, CNNTrainer
 
 
 
-
 class TrainingManager:
+    """
+
+    Rules:
+        - Models must be trained on SAME dataset
+
+    """
     def __init__(self, mlp_cfg: MLPConfig | None = None, cnn_cfg: CNNConfig | None = None):
         self.mlp_cfg = mlp_cfg or MLPConfig()
         self.cnn_cfg = cnn_cfg or CNNConfig()
@@ -232,7 +237,7 @@ class TrainingManager:
             use_amp=cfg.USE_AMP,
         )
 
-        # eval: TODO if you want
+        # eval: optional
 
         # save
         if cfg.SAVE_CHECKPOINT:
@@ -240,6 +245,8 @@ class TrainingManager:
 
         print(f"Training time: {time.time() - last_time:.2f}s\n")
 
+
+    # --- TODO: Implement Generalized train_model(model_type) Method
 
     def train_all(self):
         stime = time.time()
@@ -252,6 +259,8 @@ class TrainingManager:
 
 def main():
     manager = TrainingManager()
+    #manager.train_mlp()
+    #manager.train_cnn()
     manager.train_all()
 
 

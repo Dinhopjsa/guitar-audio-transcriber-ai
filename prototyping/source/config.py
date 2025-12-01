@@ -13,24 +13,44 @@ class BaseConfig:
     # Data roots
     DATASETS_ROOT: Path    = PROJECT_ROOT / "data" / "datasets" / "kaggle"
 
+    INFERENCE_CLIPS_ROOT: Path = PROJECT_ROOT / "data" / "inference" / "guitar_note_clips"
+    INFERENCE_AUDIO_ROOT: Path = PROJECT_ROOT / "data" / "inference" / "guitar_audio"
+
     # Source roots
     CHECKPOINTS_ROOT: Path = PROJECT_ROOT / "source" / "trainers" / "checkpoints"
 
-
-@dataclass
-class MLPConfig(BaseConfig):
-    CHECKPOINTS_DIR: Path = BaseConfig.CHECKPOINTS_ROOT / "mlp"
-
     TARGET_SR: int               = 11025 * 1
 
-    SAVE_CHECKPOINT: bool        = True
-    LOAD_CHECKPOINT: bool        = False  # DEPRECIATING
+
+
+@dataclass
+class MFCCConfig(BaseConfig):
+    #TARGET_SR: int               = 11025 * 1
 
     N_MFCC: int                  = 20
     BATCH_SIZE: int              = 32
     NORMALIZE_FEATURES: bool     = False  # don't use with std scaler
     STANDARD_SCALER: bool        = True
     NORMALIZE_AUDIO_VOLUME: bool = True
+
+
+@dataclass
+class MelSpecConfig(BaseConfig):
+    #TARGET_SR: int = 11025 * 1
+
+    N_MELS: int                  = 32 * 2
+    N_FFT: int                   = 512
+    HOP_LENGTH: int              = 256
+    BATCH_SIZE: int              = 32
+    NORMALIZE_AUDIO_VOLUME: bool = True
+
+
+@dataclass
+class MLPConfig(MFCCConfig):
+    CHECKPOINTS_DIR: Path = BaseConfig.CHECKPOINTS_ROOT / "mlp"
+
+    SAVE_CHECKPOINT: bool        = True
+    LOAD_CHECKPOINT: bool        = False  # DEPRECIATING
 
     HIDDEN_DIM: int              = 128
     NUM_HIDDEN_LAYERS: int       = 2
@@ -46,19 +66,11 @@ class MLPConfig(BaseConfig):
 
 
 @dataclass
-class CNNConfig(BaseConfig):
+class CNNConfig(MelSpecConfig):
     CHECKPOINTS_DIR: Path = BaseConfig.CHECKPOINTS_ROOT / "cnn"
-
-    TARGET_SR: int               = 11025
 
     SAVE_CHECKPOINT: bool        = True
     LOAD_CHECKPOINT: bool        = False  # DEPRECIATING
-
-    N_MELS: int                  = 32 * 2
-    N_FFT: int                   = 512
-    HOP_LENGTH: int              = 256
-    BATCH_SIZE: int              = 32
-    NORMALIZE_AUDIO_VOLUME: bool = True
 
     BASE_CHANNELS: int           = 32
     NUM_BLOCKS: int              = 3
@@ -90,15 +102,14 @@ class AudioSlicerConfig(BaseConfig):
     MIN_IN_DB_THRESHOLD: float = -45.0
     MIN_SLICE_RMS_DB: float = -37.5
 
-    TARGET_SR: int = 11025
     HOP_LEN: int = (256 * 3)    # window size for detection - number of samples you “move forward” between frames when computing any time–frequency - relates to sensitivity
     MIN_SEP: float = 0.25       # secs
     CLIP_LENGTH: float = 0.75   # final clip duration (secs)
 
 
-@dataclass
-class TranscribeConfig(BaseConfig):
-    INFERENCE_CLIPS_ROOT: Path = BaseConfig.PROJECT_ROOT / "data" / "inference" / "guitar_note_clips"
-    INFERENCE_AUDIO_ROOT: Path = BaseConfig.PROJECT_ROOT / "data" / "inference" / "guitar_audio"
+#@dataclass
+#class TranscribeConfig(BaseConfig):
 
-    TARGET_SR: int = 11025
+
+
+

@@ -21,7 +21,7 @@ class NotePredictor:
 
         self.configs = {"mlp_config":None, "cnn_config":None}
 
-        self.cnn_weight = 0.5
+        self.cnn_weight = 0.95
         self.mlp_weight = (1.0 - self.cnn_weight)
 
 
@@ -168,4 +168,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    #main()
+    pass

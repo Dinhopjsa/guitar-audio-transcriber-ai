@@ -9,7 +9,7 @@ import numpy as np
 from config import *
 
 
-_CFG = AudioSlicerConfig()
+#_CFG = AudioSlicerConfig()
 
 
 
@@ -19,7 +19,7 @@ class AudioSlicer:
         pass
 
     @staticmethod
-    def load_wav(path, sr=_CFG.TARGET_SR):
+    def load_wav(path, sr=11025):
         if not os.path.exists(path):
             raise FileNotFoundError(f"[load_audio] File not found at: {path}")
 
@@ -28,7 +28,7 @@ class AudioSlicer:
 
     # -- audio (pre)processing
     @staticmethod
-    def apply_db_threshold(y, min_db=_CFG.MIN_IN_DB_THRESHOLD): # zero_below_db, apply_noise_gate
+    def apply_db_threshold(y, min_db=-45.0): # zero_below_db, apply_noise_gate
         # zero out samples whose amplitude is below `min_db`
 
         eps = 1e-10
@@ -43,7 +43,7 @@ class AudioSlicer:
 
     # - rms threshold
     @staticmethod
-    def compute_rms_db(y, frame_len=2048, hop_len=_CFG.HOP_LEN, smooth = True):
+    def compute_rms_db(y, frame_len=2048, hop_len=512, smooth = True):
         rms = librosa.feature.rms(
             y=y,
             frame_length=frame_len,
@@ -78,7 +78,7 @@ class AudioSlicer:
 
         return gate_db, slice_min_db, (noise_floor, signal_floor)
 
-    def apply_rms_threshold(self, y, hop_len=_CFG.HOP_LEN):
+    def apply_rms_threshold(self, y, hop_len=512):
         rms_db = self.compute_rms_db(y=y, hop_len=hop_len)
 
         gate_db, slice_min_db, stats = self.compute_dynamic_thresholds(rms_db)
@@ -106,7 +106,7 @@ class AudioSlicer:
 
     # -- per slice preprocessing
     @staticmethod
-    def is_slice_loud_enough(clip, min_rms_db=_CFG.MIN_SLICE_RMS_DB):
+    def is_slice_loud_enough(clip, min_rms_db=-37.5):
         eps = 1e-10
         rms = np.sqrt(np.mean(clip**2)) # root mean squared - avg. energy or loudness of a signal
         rms_db = 20 * np.log10(rms + eps)
@@ -116,7 +116,7 @@ class AudioSlicer:
 
     # -- onset detection slicing
     @staticmethod
-    def detect_onsets(y, sr=_CFG.TARGET_SR, hop_len=_CFG.HOP_LEN, min_sep=_CFG.MIN_SEP):
+    def detect_onsets(y, sr=11025, hop_len=512, min_sep=0.25):
         onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop_len)
 
         frames = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr, hop_length=hop_len, backtrack=True) # backtrack here? or manual?
@@ -135,7 +135,7 @@ class AudioSlicer:
         return filtered     # list of indices where onsets (notes) start
 
     @staticmethod
-    def slice_audio(y, onset, next_onset, sr=_CFG.TARGET_SR, length_sec=_CFG.CLIP_LENGTH):
+    def slice_audio(y, onset, next_onset, sr=11025, length_sec=0.5):
         length = int(length_sec * sr)
         start = onset
         end = min(start + length, next_onset)
@@ -147,16 +147,16 @@ class AudioSlicer:
 
 
     @staticmethod
-    def save_clip(clip, sr, out_dir, idx, onset_s):
+    def save_clip(clip, sr, out_dir, idx, onset_s, audio_name="clip"):
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
-        fname = f"{_CFG.AUDIO_NAME}__{onset_s:.3f}s_{idx}.wav"
+        fname = f"{audio_name}__{onset_s:.3f}s_{idx}.wav"
         sf.write((out_dir / fname), clip, sr)
 
 
-    def sliceNsave(self, audio_path, out_dir=_CFG.OUT_CLIPS_DIR, target_sr=_CFG.TARGET_SR, hop_len=_CFG.HOP_LEN, length_sec=_CFG.CLIP_LENGTH):
+    def sliceNsave(self, audio_path, out_dir, target_sr=11025, hop_len=512, length_sec=0.5):
         y, sr = self.load_wav(audio_path, target_sr)
-        y_gated = self.apply_db_threshold(y=y, min_db=_CFG.MIN_IN_DB_THRESHOLD)
+        y_gated = self.apply_db_threshold(y=y, min_db=-45.0)
         y_gated = self.apply_rms_threshold(y_gated, hop_len=hop_len)
         onsets = self.detect_onsets(y=y_gated, sr=sr)
         total = 0
